@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ВЗЛОМ СИСТЕМЫ — Секретный Протокол</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --paper: #0f1217;
+    --green: #00ff88;
+    --green-dim: #00cc6a;
+    --amber: #ffb300;
+    --red: #ff4444;
+    --text: #c8d0dc;
+    --text-dim: #606878;
+    --border: #1e2530;
+    --glow: 0 0 20px rgba(0,255,136,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Scanlines overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* Grid background */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* TOP CLASSIFIED BANNER */
+  .classified-banner {
+    text-align: center;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 6px;
+    color: var(--red);
+    padding: 10px;
+    border: 1px solid var(--red);
+    margin-bottom: 40px;
+    position: relative;
+    animation: pulse-border 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-border {
+    0%, 100% { border-color: var(--red); box-shadow: 0 0 10px rgba(255,68,68,0.2); }
+    50% { border-color: rgba(255,68,68,0.5); box-shadow: none; }
+  }
+
+  .classified-banner::before,
+  .classified-banner::after {
+    content: '/// ';
+    color: rgba(255,68,68,0.4);
+  }
+
+  /* HEADER */
+  .header {
+    margin-bottom: 48px;
+    position: relative;
+  }
+
+  .protocol-id {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--green);
+    letter-spacing: 3px;
+    margin-bottom: 12px;
+    opacity: 0;
+    animation: fadeIn 0.5s 0.2s forwards;
+  }
+
+  .main-title {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: clamp(36px, 8vw, 72px);
+    line-height: 0.9;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: -1px;
+    margin-bottom: 16px;
+    opacity: 0;
+    animation: slideUp 0.6s 0.3s forwards;
+  }
+
+  .main-title .accent {
+    color: var(--green);
+    text-shadow: var(--glow);
+    display: block;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--text-dim);
+    border-left: 2px solid var(--green);
+    padding-left: 12px;
+    line-height: 1.6;
+    opacity: 0;
+    animation: fadeIn 0.5s 0.6s forwards;
+  }
+
+  .header-line {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, var(--green), transparent);
+    margin-top: 24px;
+    opacity: 0;
+    animation: expandLine 0.8s 0.7s forwards;
+  }
+
+  @keyframes expandLine {
+    from { transform: scaleX(0); transform-origin: left; opacity: 1; }
+    to { transform: scaleX(1); opacity: 1; }
+  }
+
+  /* STAGES */
+  .stage {
+    margin-bottom: 32px;
+    border: 1px solid var(--border);
+    background: var(--paper);
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    animation: fadeIn 0.5s forwards;
+  }
+
+  .stage:nth-child(1) { animation-delay: 0.8s; }
+  .stage:nth-child(2) { animation-delay: 1.0s; }
+  .stage:nth-child(3) { animation-delay: 1.2s; }
+  .stage:nth-child(4) { animation-delay: 1.4s; }
+  .stage:nth-child(5) { animation-delay: 1.6s; }
+
+  .stage::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--green);
+  }
+
+  .stage-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px 14px 24px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+  }
+
+  .stage-header:hover {
+    background: rgba(0,255,136,0.03);
+  }
+
+  .stage-num {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--green);
+    background: rgba(0,255,136,0.08);
+    border: 1px solid rgba(0,255,136,0.2);
+    padding: 3px 8px;
+    letter-spacing: 2px;
+    white-space: nowrap;
+  }
+
+  .stage-title-wrap {
+    flex: 1;
+  }
+
+  .stage-name {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 18px;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .stage-desc {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    margin-top: 2px;
+  }
+
+  .stage-toggle {
+    font-size: 18px;
+    color: var(--green);
+    transition: transform 0.3s;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .stage.open .stage-toggle { transform: rotate(45deg); }
+
+  .stage-body {
+    padding: 0 24px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, padding 0.3s;
+  }
+
+  .stage.open .stage-body {
+    max-height: 600px;
+    padding: 20px 24px;
+  }
+
+  /* CHECKLIST ITEMS */
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .check-item:last-child { border-bottom: none; }
+
+  .check-item:hover { background: rgba(0,255,136,0.02); margin: 0 -24px; padding: 12px 24px; }
+
+  .checkbox {
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid rgba(0,255,136,0.4);
+    background: transparent;
+    flex-shrink: 0;
+    margin-top: 2px;
+    position: relative;
+    transition: all 0.2s;
+  }
+
+  .check-item.done .checkbox {
+    background: var(--green);
+    border-color: var(--green);
+    box-shadow: 0 0 8px rgba(0,255,136,0.5);
+  }
+
+  .check-item.done .checkbox::after {
+    content: '✓';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #000;
+    font-weight: bold;
+  }
+
+  .check-text {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+    transition: color 0.2s;
+  }
+
+  .check-item.done .check-text {
+    color: var(--text-dim);
+    text-decoration: line-through;
+    text-decoration-color: rgba(0,255,136,0.4);
+  }
+
+  .check-text strong {
+    color: var(--amber);
+    font-style: normal;
+    font-weight: 600;
+  }
+
+  /* SIGNAL 505 BLOCK */
+  .signal-block {
+    border: 1px solid var(--amber);
+    background: rgba(255,179,0,0.04);
+    padding: 24px;
+    margin-top: 40px;
+    position: relative;
+    opacity: 0;
+    animation: fadeIn 0.5s 1.8s forwards;
+  }
+
+  .signal-block::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--amber);
+  }
+
+  .signal-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--amber);
+    letter-spacing: 4px;
+    margin-bottom: 12px;
+  }
+
+  .signal-title {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--amber);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    text-shadow: 0 0 20px rgba(255,179,0,0.3);
+  }
+
+  .signal-text {
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  .signal-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+  }
+
+  /* PROGRESS BAR */
+  .progress-wrap {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: rgba(0,255,136,0.1);
+    z-index: 200;
+  }
+
+  .progress-bar {
+    height: 100%;
+    background: var(--green);
+    box-shadow: var(--glow);
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  /* COUNTER */
+  .counter {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--paper);
+    border: 1px solid var(--green);
+    padding: 10px 18px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--green);
+    z-index: 200;
+    box-shadow: var(--glow);
+    opacity: 0;
+    animation: fadeIn 0.5s 2s forwards;
+  }
+
+  .counter-num {
+    font-size: 22px;
+    font-weight: bold;
+    display: block;
+    line-height: 1;
+  }
+
+  /* FOOTER */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    opacity: 0;
+    animation: fadeIn 0.5s 2s forwards;
+  }
+
+  /* ANIMATIONS */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Glitch effect on title hover */
+  .main-title:hover .accent {
+    animation: glitch 0.3s ease;
+  }
+
+  @keyframes glitch {
+    0% { transform: none; }
+    20% { transform: translateX(-3px); }
+    40% { transform: translateX(3px); clip-path: inset(20% 0 30% 0); }
+    60% { transform: translateX(-1px); clip-path: none; }
+    80% { transform: translateX(2px); }
+    100% { transform: none; }
+  }
+
+  @media (max-width: 600px) {
+    .counter { display: none; }
+    .stage-name { font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-wrap">
+  <div class="progress-bar" id="progressBar"></div>
+</div>
+
+<div class="counter" id="counter">
+  <span class="counter-num" id="doneCount">0</span>
+  / <span id="totalCount">9</span> выполнено
+</div>
+
+<div class="container">
+
+  <div class="classified-banner">СЕКРЕТНЫЙ ПРОТОКОЛ — ТОЛЬКО ДЛЯ СВОИХ</div>
+
+  <div class="header">
+    <div class="protocol-id">PROTOCOL-001 // МАТЕМАТИКА // ВЕРСИЯ 1.0</div>
+    <h1 class="main-title">
+      Взлом
+      <span class="accent">Системы</span>
+    </h1>
+    <p class="subtitle">Инструкция для тех, кто хочет спокойных уроков и хороших оценок.<br>Кликай на стадии — открывай протокол. Отмечай выполненное.</p>
+    <div class="header-line"></div>
+  </div>
+
+  <!-- STAGE 1 -->
+  <div class="stage open" onclick="toggleStage(this)">
+    <div class="stage-header">
+      <span class="stage-num">СТАДИЯ 01</span>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Преминт</div>
+        <div class="stage-desc">// ДО ЗВОНКА</div>
+      </div>
+      <span class="stage-toggle">+</span>
+    </div>
+    <div class="stage-body">
+      <div class="check-item" onclick="toggleCheck(event, this)">
+        <div class="checkbox"></div>
+        <div class="check-text"><strong>Рабочий стол:</strong> На столе только тетрадь, учебник и ручка. Телефоны — в сумках (или экраном вниз). Если учитель видит телефон — он видит повод начать атаку.</div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(event, this)">
+        <div class="checkbox"></div>
+        <div class="check-text"><strong>Группировка:</strong> Садимся на свои места сразу, как вошли в кабинет. Не ждём крика «Сядьте!».</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 2 -->
+  <div class="stage" onclick="toggleStage(this)">
+    <div class="stage-header">
+      <span class="stage-num">СТАДИЯ 02</span>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Запуск системы</div>
+        <div class="stage-desc">// ПЕРВЫЕ 10 МИНУТ</div>
+      </div>
+      <span class="stage-toggle">+</span>
+    </div>
+    <div class="stage-body">
+      <div class="check-item" onclick="toggleCheck(event, this)">
+        <div class="checkbox"></div>
+        <div class="check-text"><strong>Режим Mute:</strong> Полная тишина, пока учитель объясняет тему. Даже если очень хочется спросить у соседа «какой номер?».</div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(event, this)">
+        <div class="checkbox"></div>
+        <div class="check-text"><strong>Контакт:</strong> Хотя бы пара человек смотрят на учителя и кивают. Это даёт ему сигнал: «Меня слушают, всё в порядке».</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 3 -->
+  <div class="stage" onclick="toggleStage(this)">
+    <div class="stage-header">
+      <span class="stage-num">СТАДИЯ 03</span>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Активная работа</div>
+        <div class="stage-desc">// В СЕРЕДИНЕ УРОКА</div>
+      </div>
+      <span class="stage-toggle">+</span>
+    </div>
+    <div class="stage-body">
+      <div class="check-item" onclick="toggleCheck(event, this)">
+        <div class="checkbox"></div>
+        <div class="check-text"><strong>Правило руки:</strong> Поднимаем руку ПЕРЕД тем, как что-то выкрикнуть.</div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(event, this)">
+        <div class="checkbox"></div>
+        <div class="check-text"><strong>Стоп-клоун:</strong> Если кто-то начинает шутить — не смеёмся. Без зрителей клоуны быстро затихают. Покажи другу знак «Тсс» — наш секретный пароль.</div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(event, this)">
+        <div class="checkbox"></div>
+        <div class="check-text"><strong>Игнор «Инерции»:</strong> Если учитель сорвался — сохраняем спокойствие. Это «поезд тормозит». Не отвечаем грубостью на грубость.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 4 -->
+  <div class="stage" onclick="toggleStage(this)">
+    <div class="stage-header">
+      <span class="stage-num">СТАДИЯ 04</span>
+      <div class="stage-title-wrap">
+        <div class="stage-name">Финал</div>
+        <div class="stage-desc">// КОНЕЦ УРОКА</div>
+      </div>
+      <span class="stage-toggle">+</span>
+    </div>
+    <div class="stage-body">
+      <div class="check-item" onclick="toggleCheck(event, this)">
+        <div class="checkbox"></div>
+        <div class="check-text"><strong>Запись ДЗ:</strong> Демонстративно записываем задание. Это показывает, что урок прошёл не зря.</div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(event, this)">
+        <div class="checkbox"></div>
+        <div class="check-text"><strong>Чистота:</strong> Не вскакиваем до звонка. Ждём команду «Урок окончен».</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIGNAL 505 -->
+  <div class="signal-block">
+    <div class="signal-label">// ЛАЙФХАК ДЛЯ КЛАССА //</div>
+    <div class="signal-icon">🛡️</div>
+    <div class="signal-title">Сигнал 505</div>
+    <p class="signal-text">
+      Договоритесь о тайном жесте: например, <strong style="color:var(--amber)">скрещенные пальцы на парте</strong> или <strong style="color:var(--amber)">рука у подбородка</strong>.<br><br>
+      Если кто-то видит, что класс начинает шуметь и «точка кипения» учителя близка — он подаёт этот сигнал.<br><br>
+      Это значит: <em style="color:#fff">«Ребята, тормозим — сейчас рванёт!»</em>
+    </p>
+  </div>
+
+  <div class="footer">
+    <span>PROTOCOL-001 // MATH // v1.0</span>
+    <span>🛡️ ТОЛЬКО ДЛЯ СВОИХ</span>
+  </div>
+
+</div>
+
+<script>
+  function toggleStage(el) {
+    el.classList.toggle('open');
+  }
+
+  function toggleCheck(e, el) {
+    e.stopPropagation();
+    el.classList.toggle('done');
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const total = document.querySelectorAll('.check-item').length;
+    const done = document.querySelectorAll('.check-item.done').length;
+    document.getElementById('doneCount').textContent = done;
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('progressBar').style.width = (done / total * 100) + '%';
+  }
+
+  updateProgress();
+</script>
+</body>
+</html>
